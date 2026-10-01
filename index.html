@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 오목 - 3단계</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f1ea;color:#222;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 14px 30px}.top{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+h1{font-size:25px;margin:0 0 4px}.sub{color:#777;font-size:13px}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}select,button{min-height:42px;border:1px solid #d7d2c8;border-radius:10px;background:white;padding:0 12px;font:inherit;color:#222}button{cursor:pointer;font-weight:700}.primary{background:#7657d8;color:white;border-color:#7657d8}
+.status{background:white;border:1px solid #ddd7ce;border-radius:12px;padding:11px 13px;margin-bottom:12px;display:flex;justify-content:space-between;gap:10px}
+.board-wrap{max-width:620px;margin:auto;background:#b9823e;padding:9px;border-radius:14px;box-shadow:0 3px 12px #0002}.board{display:grid;grid-template-columns:repeat(15,1fr);aspect-ratio:1;background:#d7a45a;border:1px solid #8d5c28}
+.cell{position:relative;border:0;background:transparent;padding:0;min-width:0;min-height:0;cursor:pointer}.cell:before{content:"";position:absolute;left:10%;right:10%;top:50%;height:1px;background:#65451f}.cell:after{content:"";position:absolute;top:10%;bottom:10%;left:50%;width:1px;background:#65451f}
+.stone{position:absolute;width:70%;height:70%;left:15%;top:15%;border-radius:50%;z-index:2;box-shadow:inset -2px -3px 4px #0005,2px 2px 3px #0004}.black{background:#171717}.white{background:#f4f4f4;border:1px solid #aaa}.last{outline:3px solid #d44;outline-offset:-3px}.star{position:absolute;width:18%;height:18%;left:41%;top:41%;background:#65451f;border-radius:50%;z-index:1}
+.info{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.stat{background:white;border:1px solid #ddd7ce;border-radius:10px;text-align:center;padding:9px}.stat b{display:block}.stat span{font-size:11px;color:#777}
+.hint{text-align:center;color:#777;font-size:12px;margin-top:10px}@media(max-width:480px){h1{font-size:20px}.wrap{padding:14px 8px}.board-wrap{padding:6px}.status{font-size:13px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="top"><div><h1>♟ AI 오목</h1><div class="sub">15×15 · 흑돌은 당신 · 백돌은 AI</div></div>
+<div class="controls"><label>난이도 <select id="level"><option value="easy">초급</option><option value="medium" selected>중급</option><option value="hard">고급</option></select></label><button id="newGame" class="primary">새 게임</button></div></div>
+<div class="status"><span id="status">당신의 차례입니다 — 흑</span><span id="thinking"></span></div>
+<div class="board-wrap"><div id="board" class="board" aria-label="15x15 오목판"></div></div>
+<div class="info"><div class="stat"><b id="moves">0</b><span>수</span></div><div class="stat"><b>● 흑</b><span>당신</span></div><div class="stat"><b>○ 백</b><span id="aiLabel">중급 AI</span></div></div>
+<div class="hint">가로·세로·대각선으로 먼저 5개를 연결하면 승리합니다.</div>
+</main>
+<script>
+const N=15,B=1,W=2,E=0;let board,over,thinking,last,moves,timer;
+const el=id=>document.getElementById(id),stars=new Set(["3,3","3,11","7,7","11,3","11,11"]);
+function reset(){clearTimeout(timer);board=Array.from({length:N},()=>Array(N).fill(E));over=false;thinking=false;last=null;moves=0;el("status").textContent="당신의 차례입니다 — 흑";el("thinking").textContent="";updateLabel();render()}
+function updateLabel(){const v=el("level").value;el("aiLabel").textContent=(v==="easy"?"초급":v==="medium"?"중급":"고급")+" AI"}
+function render(){const x=el("board");x.innerHTML="";for(let r=0;r<N;r++)for(let c=0;c<N;c++){let b=document.createElement("button");b.className="cell";b.dataset.r=r;b.dataset.c=c;if(stars.has(r+","+c)){let s=document.createElement("i");s.className="star";b.append(s)}if(board[r][c]){let s=document.createElement("i");s.className="stone "+(board[r][c]===B?"black":"white")+(last&&last[0]===r&&last[1]===c?" last":"");b.append(s)}x.append(b)}el("moves").textContent=moves}
+function inside(r,c){return r>=0&&r<N&&c>=0&&c<N}
+function win(r,c,p){for(const[dR,dC]of [[1,0],[0,1],[1,1],[1,-1]]){let n=1;for(let k=1;k<5;k++){let R=r+dR*k,C=c+dC*k;if(inside(R,C)&&board[R][C]===p)n++;else break}for(let k=1;k<5;k++){let R=r-dR*k,C=c-dC*k;if(inside(R,C)&&board[R][C]===p)n++;else break}if(n>=5)return true}return false}
+function full(){return board.every(a=>a.every(v=>v))}
+function put(r,c,p){if(over||board[r][c])return false;board[r][c]=p;moves++;last=[r,c];render();if(win(r,c,p)){over=true;el("status").textContent=p===B?"🎉 당신이 이겼습니다!":"🤖 AI가 이겼습니다!";return true}if(full()){over=true;el("status").textContent="무승부입니다.";return true}return true}
+function scoreLine(n,o){if(n>=5)return 1e7;if(n===4&&o===2)return 1e6;if(n===4)return 120000;if(n===3&&o===2)return 18000;if(n===3)return 2500;if(n===2&&o===2)return 500;if(n===2)return 80;return n===1&&o===2?10:0}
+function point(r,c,p){let t=0;for(const[dR,dC]of [[1,0],[0,1],[1,1],[1,-1]]){let n=1,o=0,R=r+dR,C=c+dC;while(inside(R,C)&&board[R][C]===p){n++;R+=dR;C+=dC}if(inside(R,C)&&!board[R][C])o++;R=r-dR;C=c-dC;while(inside(R,C)&&board[R][C]===p){n++;R-=dR;C-=dC}if(inside(R,C)&&!board[R][C])o++;t+=scoreLine(n,o)}return t}
+function candidates(limit=18){let a=[],has=board.some(row=>row.some(v=>v));if(!has)return [[7,7]];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!board[r][c]){let near=false;for(let dr=-2;dr<=2&&!near;dr++)for(let dc=-2;dc<=2;dc++)if((dr||dc)&&inside(r+dr,c+dc)&&board[r+dr][c+dc])near=true;if(near)a.push([r,c])}a.sort((x,y)=>(point(y[0],y[1],W)+point(y[0],y[1],B))-(point(x[0],x[1],W)+point(x[0],x[1],B)));return a.slice(0,limit)}
+function best(){let best=null,bs=-Infinity;for(const[r,c]of candidates(28)){board[r][c]=W;let a=point(r,c,W);board[r][c]=0;board[r][c]=B;let d=point(r,c,B);board[r][c]=0;let s=Math.max(a,d*.95);if(s>bs){bs=s;best=[r,c]}}return best}
+function evaluate(){let s=0;for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!board[r][c])s+=.08*point(r,c,W)-.095*point(r,c,B);return s}
+function minimax(depth,a,b,max){if(!depth)return evaluate();let ms=candidates(depth>1?8:12);if(max){let v=-Infinity;for(const[r,c]of ms){board[r][c]=W;let z=win(r,c,W)?9999999:minimax(depth-1,a,b,false);board[r][c]=0;v=Math.max(v,z);a=Math.max(a,v);if(b<=a)break}return v}else{let v=Infinity;for(const[r,c]of ms){board[r][c]=B;let z=win(r,c,B)?-9999999:minimax(depth-1,a,b,true);board[r][c]=0;v=Math.min(v,z);b=Math.min(b,v);if(b<=a)break}return v}}
+function aiMove(){if(over)return;let v=el("level").value,pos;if(v==="easy"){let a=candidates(14);pos=a[Math.floor(Math.random()*a.length)]}else if(v==="medium")pos=best();else{let bs=-Infinity;for(const[r,c]of candidates(10)){board[r][c]=W;let z=win(r,c,W)?9999999:minimax(2,-Infinity,Infinity,false);board[r][c]=0;if(z>bs){bs=z;pos=[r,c]}}}if(pos)put(pos[0],pos[1],W);if(!over){thinking=false;el("status").textContent="당신의 차례입니다 — 흑";el("thinking").textContent=""}}
+el("board").addEventListener("click",e=>{let b=e.target.closest(".cell");if(!b||over||thinking)return;let r=+b.dataset.r,c=+b.dataset.c;if(!put(r,c,B)||over)return;thinking=true;el("status").textContent="AI가 생각하는 중…";el("thinking").textContent="분석 중";timer=setTimeout(aiMove,el("level").value==="hard"?180:120)});
+el("newGame").onclick=reset;el("level").onchange=()=>{updateLabel();reset()};reset();
+</script>
+</body></html>
